@@ -5,6 +5,7 @@ import { validateCreateApplication } from '@/lib/validators';
 import { PAGE_SIZE } from '@/lib/constants';
 import { requireAuth } from '@/lib/auth/guards';
 import { ensureAppInitialized } from '@/lib/init';
+import { ensureUserApplicationsSeeded } from '@/lib/auth/seed';
 import type { ApplicationQuery, CreateApplicationInput } from '@/lib/types';
 import type { ApplicationStatus, JobSource, Priority, RoleType, WorkType } from '@/lib/constants';
 
@@ -15,6 +16,8 @@ export async function GET(request: NextRequest) {
 
   const auth = await requireAuth(request);
   if ('response' in auth) return auth.response;
+
+  ensureUserApplicationsSeeded(auth.session.userId);
 
   try {
     const { searchParams } = new URL(request.url);
@@ -68,6 +71,8 @@ export async function POST(request: NextRequest) {
 
   const auth = await requireAuth(request);
   if ('response' in auth) return auth.response;
+
+  ensureUserApplicationsSeeded(auth.session.userId);
 
   try {
     const body = await request.json();

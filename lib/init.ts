@@ -1,9 +1,13 @@
-import { initializeAuthAndSeed } from '@/lib/auth/seed';
+import { ensureDefaultUser } from '@/lib/auth/seed';
 
-let initialized = false;
+let initPromise: Promise<number> | null = null;
 
-export async function ensureAppInitialized(): Promise<void> {
-  if (initialized) return;
-  await initializeAuthAndSeed();
-  initialized = true;
+export function ensureAppInitialized(): Promise<number> {
+  if (!initPromise) {
+    initPromise = ensureDefaultUser().catch((error) => {
+      initPromise = null;
+      throw error;
+    });
+  }
+  return initPromise;
 }

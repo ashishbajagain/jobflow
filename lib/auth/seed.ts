@@ -13,14 +13,19 @@ export async function seedDefaultUser(): Promise<number> {
   }
 
   const passwordHash = await hashPassword(DEFAULT_PASSWORD);
-  const user = createUser({
-    username: DEFAULT_USER.username,
-    email: DEFAULT_USER.email,
-    passwordHash,
-    displayName: DEFAULT_USER.displayName,
-  });
-
-  return user.id;
+  try {
+    const user = createUser({
+      username: DEFAULT_USER.username,
+      email: DEFAULT_USER.email,
+      passwordHash,
+      displayName: DEFAULT_USER.displayName,
+    });
+    return user.id;
+  } catch (error) {
+    const retry = getUserByUsername(DEFAULT_USER.username);
+    if (retry) return retry.id;
+    throw error;
+  }
 }
 
 export function assignOrphanApplicationsToUser(userId: number): void {
@@ -28,10 +33,13 @@ export function assignOrphanApplicationsToUser(userId: number): void {
   db.prepare('UPDATE applications SET user_id = ? WHERE user_id IS NULL').run(userId);
 }
 
-export async function initializeAuthAndSeed(): Promise<void> {
+export async function ensureDefaultUser(): Promise<number> {
   const userId = await seedDefaultUser();
   assignOrphanApplicationsToUser(userId);
+  return userId;
+}
 
+export function ensureUserApplicationsSeeded(userId: number): void {
   const db = getDb();
   const count = (
     db.prepare('SELECT COUNT(*) as count FROM applications WHERE user_id = ?').get(userId) as {
@@ -42,4 +50,10 @@ export async function initializeAuthAndSeed(): Promise<void> {
   if (count === 0) {
     seedDatabase(false, userId);
   }
+}
+
+/** @deprecated Use ensureDefaultUser + ensureUserApplicationsSeeded */
+export async function initializeAuthAndSeed(): Promise<void> {
+  const userId = await ensureDefaultUser();
+  ensureUserApplicationsSeeded(userId);
 }
