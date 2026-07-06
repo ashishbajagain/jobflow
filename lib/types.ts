@@ -55,6 +55,7 @@ export interface ApplicationWithTimeline extends Application {
 }
 
 export interface ApplicationFilters {
+  userId?: number;
   status?: ApplicationStatus;
   role_type?: RoleType;
   source?: JobSource;

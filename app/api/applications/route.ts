@@ -1,16 +1,21 @@
 import { NextRequest } from 'next/server';
-import { getAllApplications, getApplicationsCount, createApplication, seedDatabase } from '@/lib/db';
+import { getAllApplications, getApplicationsCount, createApplication } from '@/lib/db';
 import { successResponse, errorResponse, handleApiError } from '@/lib/api-utils';
 import { validateCreateApplication } from '@/lib/validators';
 import { PAGE_SIZE } from '@/lib/constants';
+import { requireAuth } from '@/lib/auth/guards';
+import { ensureAppInitialized } from '@/lib/init';
 import type { ApplicationQuery, CreateApplicationInput } from '@/lib/types';
 import type { ApplicationStatus, JobSource, Priority, RoleType, WorkType } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 
-seedDatabase();
-
 export async function GET(request: NextRequest) {
+  await ensureAppInitialized();
+
+  const auth = await requireAuth(request);
+  if ('response' in auth) return auth.response;
+
   try {
     const { searchParams } = new URL(request.url);
     const pageParam = searchParams.get('page');
@@ -19,6 +24,7 @@ export async function GET(request: NextRequest) {
     const pageSize = Math.min(50, Math.max(1, parseInt(searchParams.get('pageSize') || String(PAGE_SIZE), 10)));
 
     const filters: ApplicationQuery = {
+      userId: auth.session.userId,
       sortBy: (searchParams.get('sortBy') as ApplicationQuery['sortBy']) || 'date_applied',
       sortOrder: (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc',
       status: (searchParams.get('status') as ApplicationStatus) || undefined,
@@ -58,6 +64,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  await ensureAppInitialized();
+
+  const auth = await requireAuth(request);
+  if ('response' in auth) return auth.response;
+
   try {
     const body = await request.json();
     const validation = validateCreateApplication(body);
@@ -66,7 +77,10 @@ export async function POST(request: NextRequest) {
       return errorResponse(validation.error || 'Invalid input');
     }
 
-    const application = createApplication(validation.data as unknown as CreateApplicationInput);
+    const application = createApplication(
+      validation.data as unknown as CreateApplicationInput,
+      auth.session.userId
+    );
     return successResponse(application, 201);
   } catch (error) {
     return handleApiError(error, 'POST /api/applications');

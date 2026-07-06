@@ -92,6 +92,10 @@ function buildWhereClause(filters: ApplicationFilters): { clause: string; params
   const conditions: string[] = [];
   const params: unknown[] = [];
 
+  if (filters.userId != null) {
+    conditions.push('user_id = ?');
+    params.push(filters.userId);
+  }
   if (filters.status) {
     conditions.push('status = ?');
     params.push(filters.status);
@@ -172,11 +176,15 @@ export function getAllApplications(query: ApplicationQuery = {}): Application[] 
   return rows.map(rowToApplication);
 }
 
-export function getApplicationById(id: number): ApplicationWithTimeline | null {
+export function getApplicationById(id: number, userId?: number): ApplicationWithTimeline | null {
   const database = getDb();
-  const row = database.prepare('SELECT * FROM applications WHERE id = ?').get(id) as
-    | Record<string, unknown>
-    | undefined;
+  const row = userId != null
+    ? (database.prepare('SELECT * FROM applications WHERE id = ? AND user_id = ?').get(id, userId) as
+        | Record<string, unknown>
+        | undefined)
+    : (database.prepare('SELECT * FROM applications WHERE id = ?').get(id) as
+        | Record<string, unknown>
+        | undefined);
 
   if (!row) return null;
 
@@ -189,7 +197,7 @@ export function getApplicationById(id: number): ApplicationWithTimeline | null {
   return { ...rowToApplication(row), timeline };
 }
 
-export function createApplication(input: CreateApplicationInput): Application {
+export function createApplication(input: CreateApplicationInput, userId: number): Application {
   const database = getDb();
   const now = new Date().toISOString();
 
@@ -199,8 +207,8 @@ export function createApplication(input: CreateApplicationInput): Application {
         company, position, date_applied, status, job_url, notes,
         source, location, work_type, role_type, salary_min, salary_max,
         follow_up_date, last_contact_date, priority, contact_name, contact_email,
-        next_action, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        next_action, user_id, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     .run(
       input.company.trim(),
@@ -221,6 +229,7 @@ export function createApplication(input: CreateApplicationInput): Application {
       input.contact_name?.trim() || null,
       input.contact_email?.trim() || null,
       input.next_action?.trim() || null,
+      userId,
       now,
       now
     );
@@ -233,17 +242,22 @@ export function createApplication(input: CreateApplicationInput): Application {
     )
     .run(id, null, input.status, 'Application created', now);
 
-  return getApplicationById(id)!;
+  return getApplicationById(id, userId)!;
 }
 
 export function updateApplication(
   id: number,
-  input: UpdateApplicationInput
+  input: UpdateApplicationInput,
+  userId?: number
 ): Application | null {
   const database = getDb();
-  const existing = database.prepare('SELECT * FROM applications WHERE id = ?').get(id) as
-    | Record<string, unknown>
-    | undefined;
+  const existing = userId != null
+    ? (database.prepare('SELECT * FROM applications WHERE id = ? AND user_id = ?').get(id, userId) as
+        | Record<string, unknown>
+        | undefined)
+    : (database.prepare('SELECT * FROM applications WHERE id = ?').get(id) as
+        | Record<string, unknown>
+        | undefined);
 
   if (!existing) return null;
 
@@ -304,26 +318,29 @@ export function updateApplication(
       );
   }
 
-  return getApplicationById(id);
+  return getApplicationById(id, userId ?? undefined);
 }
 
 export function updateApplicationStatus(
   id: number,
   status: ApplicationStatus,
-  note?: string
+  note?: string,
+  userId?: number
 ): Application | null {
-  return updateApplication(id, { status, status_note: note });
+  return updateApplication(id, { status, status_note: note }, userId);
 }
 
-export function deleteApplication(id: number): boolean {
+export function deleteApplication(id: number, userId?: number): boolean {
   const database = getDb();
-  const result = database.prepare('DELETE FROM applications WHERE id = ?').run(id);
+  const result =
+    userId != null
+      ? database.prepare('DELETE FROM applications WHERE id = ? AND user_id = ?').run(id, userId)
+      : database.prepare('DELETE FROM applications WHERE id = ?').run(id);
   return result.changes > 0;
 }
 
-export function getApplicationStats() {
-  const database = getDb();
-  const allApps = getAllApplications();
+export function getApplicationStats(userId: number) {
+  const allApps = getAllApplications({ userId });
 
   const byStatus = Object.fromEntries(
     APPLICATION_STATUSES.map((s) => [s, 0])
@@ -385,25 +402,38 @@ export function getApplicationStats() {
   };
 }
 
-export function seedDatabase(force = false): void {
+export function seedDatabase(force = false, userId?: number): void {
   const database = getDb();
+
+  if (userId == null) {
+    return;
+  }
+
   const count = (
-    database.prepare('SELECT COUNT(*) as count FROM applications').get() as { count: number }
+    database
+      .prepare('SELECT COUNT(*) as count FROM applications WHERE user_id = ?')
+      .get(userId) as { count: number }
   ).count;
 
   if (count > 0 && !force) return;
 
   if (force) {
-    database.exec('DELETE FROM status_changes; DELETE FROM applications;');
+    database.prepare('DELETE FROM status_changes WHERE application_id IN (SELECT id FROM applications WHERE user_id = ?)').run(userId);
+    database.prepare('DELETE FROM applications WHERE user_id = ?').run(userId);
   }
 
   for (const app of SEED_APPLICATIONS) {
-    createApplication(app);
+    createApplication(app, userId);
   }
 }
 
-export function resetDatabase(): void {
+export function resetDatabase(userId?: number): void {
   const database = getDb();
+  if (userId != null) {
+    database.prepare('DELETE FROM status_changes WHERE application_id IN (SELECT id FROM applications WHERE user_id = ?)').run(userId);
+    database.prepare('DELETE FROM applications WHERE user_id = ?').run(userId);
+    return;
+  }
   database.exec('DELETE FROM status_changes; DELETE FROM applications;');
 }
 
