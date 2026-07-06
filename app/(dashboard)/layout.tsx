@@ -1,14 +1,16 @@
-import { Sidebar } from '@/components/sidebar';
+import { redirect } from 'next/navigation';
+import { getAuthSession } from '@/lib/auth/session';
+import { sessionToPublicUser } from '@/lib/auth/service';
+import { ensureAppInitialized } from '@/lib/init';
+import { DashboardShell } from '@/components/dashboard-shell';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      <div className="flex flex-1 flex-col lg:overflow-hidden">
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
-          {children}
-        </main>
-      </div>
-    </div>
-  );
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  await ensureAppInitialized();
+
+  const session = await getAuthSession();
+  if (!session) redirect('/login');
+
+  const user = sessionToPublicUser(session);
+
+  return <DashboardShell user={user}>{children}</DashboardShell>;
 }

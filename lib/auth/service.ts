@@ -14,6 +14,7 @@ import {
   createUser,
   emailExists,
   getUserByEmail,
+  getUserWithPasswordById,
   getUserWithPasswordByUsername,
   recordFailedLogin,
   resetFailedLogin,
@@ -21,7 +22,7 @@ import {
   usernameExists,
 } from './user-repository';
 import type { AuthSession, PublicUser } from './types';
-import type { ForgotPasswordInput, LoginInput, RegisterInput, ResetPasswordInput } from './validators';
+import type { ChangePasswordInput, ForgotPasswordInput, LoginInput, RegisterInput, ResetPasswordInput } from './validators';
 
 function toPublicUser(session: AuthSession): PublicUser {
   return {
@@ -171,6 +172,35 @@ export async function resetUserPassword(
   const passwordHash = await hashPassword(input.password);
   updateUserPassword(userId, passwordHash);
   deleteAllUserSessions(userId);
+
+  return { ok: true };
+}
+
+export async function changeUserPassword(
+  userId: number,
+  input: ChangePasswordInput
+): Promise<{ ok: true } | { ok: false; error: string; status: number }> {
+  const user = getUserWithPasswordById(userId);
+  if (!user) {
+    return { ok: false, error: 'User not found', status: 404 };
+  }
+
+  const valid = await verifyPassword(input.currentPassword, user.password_hash);
+  if (!valid) {
+    return { ok: false, error: 'Current password is incorrect', status: 401 };
+  }
+
+  if (input.currentPassword === input.newPassword) {
+    return { ok: false, error: 'New password must be different from current password', status: 400 };
+  }
+
+  const passwordError = validatePasswordStrength(input.newPassword);
+  if (passwordError) {
+    return { ok: false, error: passwordError, status: 400 };
+  }
+
+  const passwordHash = await hashPassword(input.newPassword);
+  updateUserPassword(userId, passwordHash);
 
   return { ok: true };
 }

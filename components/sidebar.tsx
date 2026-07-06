@@ -13,25 +13,22 @@ import {
   Workflow,
   LogOut,
   User,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { BRAND } from '@/lib/brand';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { toast } from '@/components/ui/use-toast';
+import type { PublicUser } from '@/lib/auth/types';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/pipeline', label: 'Pipeline', icon: Kanban },
   { href: '/applications', label: 'Applications', icon: List },
   { href: '/follow-ups', label: 'Follow-ups', icon: Bell },
+  { href: '/settings', label: 'Settings', icon: Settings },
 ];
-
-interface CurrentUser {
-  username: string;
-  displayName: string | null;
-  email: string;
-}
 
 function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
   const dim = size === 'sm' ? 'h-8 w-8' : 'h-9 w-9';
@@ -43,21 +40,11 @@ function Logo({ size = 'md' }: { size?: 'sm' | 'md' }) {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ user }: { user: PublicUser }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [user, setUser] = useState<CurrentUser | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/auth/me')
-      .then((res) => res.json())
-      .then((result) => {
-        if (result.success) setUser(result.data.user);
-      })
-      .catch(() => {});
-  }, []);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -67,7 +54,7 @@ export function Sidebar() {
   async function handleLogout() {
     setLoggingOut(true);
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
       router.push('/login');
       router.refresh();
     } catch {
@@ -114,21 +101,29 @@ export function Sidebar() {
           </Button>
         </Link>
 
-        {user && (
-          <div className="rounded-xl border bg-muted/30 p-3">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
-                <User className="h-4 w-4 text-primary" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{user.displayName || user.username}</p>
-                <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
-              </div>
+        <div className="rounded-xl border bg-muted/30 p-3">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10">
+              <User className="h-4 w-4 text-primary" />
             </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{user.displayName || user.username}</p>
+              <p className="truncate text-xs text-muted-foreground">@{user.username}</p>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-1">
+            <Link
+              href="/settings"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <Settings className="h-4 w-4" />
+              Account settings
+            </Link>
             <Button
               variant="ghost"
               size="sm"
-              className="mt-3 w-full justify-start gap-2 text-muted-foreground"
+              className="w-full justify-start gap-2 px-2 text-muted-foreground"
               onClick={handleLogout}
               disabled={loggingOut}
             >
@@ -136,7 +131,7 @@ export function Sidebar() {
               Sign out
             </Button>
           </div>
-        )}
+        </div>
       </div>
     </>
   );

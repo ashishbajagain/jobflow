@@ -15,6 +15,13 @@ function rowToUser(row: Record<string, unknown>): User {
   };
 }
 
+export function getUserWithPasswordById(id: number): (User & { password_hash: string }) | null {
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return { ...rowToUser(row), password_hash: row.password_hash as string };
+}
+
 export function getUserById(id: number): User | null {
   const db = getDb();
   const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id) as Record<string, unknown> | undefined;

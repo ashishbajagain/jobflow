@@ -27,7 +27,13 @@ export const resetPasswordSchema = z.object({
   password: z.string().min(AUTH_CONFIG.minPasswordLength).max(AUTH_CONFIG.maxPasswordLength),
 });
 
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required').max(AUTH_CONFIG.maxPasswordLength),
+  newPassword: z.string().min(AUTH_CONFIG.minPasswordLength).max(AUTH_CONFIG.maxPasswordLength),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

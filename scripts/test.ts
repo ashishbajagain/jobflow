@@ -172,12 +172,13 @@ test('Sort and order', () => {
 
 test('User data isolation', () => {
   const db = getDb();
+  const suffix = Date.now();
   const otherUser = db
     .prepare(
       `INSERT INTO users (username, email, password_hash, created_at, updated_at)
-       VALUES ('otheruser', 'other@test.com', 'hash', datetime('now'), datetime('now'))`
+       VALUES (?, ?, 'hash', datetime('now'), datetime('now'))`
     )
-    .run();
+    .run(`otheruser${suffix}`, `other${suffix}@test.com`);
   const otherUserId = otherUser.lastInsertRowid as number;
 
   createApplication(
