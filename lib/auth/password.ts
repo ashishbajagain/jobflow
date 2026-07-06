@@ -1,6 +1,20 @@
 import bcrypt from 'bcryptjs';
 import { AUTH_CONFIG } from './config';
 
+const COMMON_PASSWORDS = new Set([
+  'password',
+  'password1',
+  'password123',
+  '12345678',
+  '123456789',
+  'qwerty123',
+  'letmein1',
+  'welcome1',
+  'admin123',
+  'jobflow123',
+  'ashish123',
+]);
+
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, AUTH_CONFIG.bcryptRounds);
 }
@@ -24,6 +38,12 @@ export function validatePasswordStrength(password: string): string | null {
   }
   if (!/[0-9]/.test(password)) {
     return 'Password must include a number';
+  }
+  if (/\s/.test(password)) {
+    return 'Password cannot contain spaces';
+  }
+  if (COMMON_PASSWORDS.has(password.toLowerCase())) {
+    return 'Password is too common. Choose a stronger password';
   }
   return null;
 }

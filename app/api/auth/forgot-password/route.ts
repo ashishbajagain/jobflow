@@ -3,6 +3,8 @@ import { successResponse, errorResponse } from '@/lib/api-utils';
 import { requestPasswordReset } from '@/lib/auth/service';
 import { forgotPasswordSchema } from '@/lib/auth/validators';
 import { ensureAppInitialized } from '@/lib/init';
+import { parseJsonBody, getClientIp, formatZodErrors } from '@/lib/auth/http';
+import { checkRateLimit, rateLimitResponse } from '@/lib/auth/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,13 +16,22 @@ function getAppUrl(request: NextRequest): string {
 }
 
 export async function POST(request: NextRequest) {
-  await ensureAppInitialized();
-
   try {
-    const body = await request.json();
-    const parsed = forgotPasswordSchema.safeParse(body);
+    await ensureAppInitialized();
+
+    const ip = getClientIp(request);
+    const rate = checkRateLimit('forgotPassword', ip);
+    if (!rate.allowed) {
+      const { message, status } = rateLimitResponse(rate.retryAfterSec);
+      return errorResponse(message, status);
+    }
+
+    const body = await parseJsonBody(request);
+    if (!body.ok) return body.response;
+
+    const parsed = forgotPasswordSchema.safeParse(body.data);
     if (!parsed.success) {
-      return errorResponse(parsed.error.issues[0]?.message || 'Invalid input');
+      return errorResponse(formatZodErrors(parsed.error));
     }
 
     const result = await requestPasswordReset(parsed.data, getAppUrl(request));

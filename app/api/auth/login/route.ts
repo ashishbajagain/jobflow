@@ -4,21 +4,32 @@ import { loginUser } from '@/lib/auth/service';
 import { loginSchema } from '@/lib/auth/validators';
 import { setSessionCookie } from '@/lib/auth/session';
 import { ensureAppInitialized } from '@/lib/init';
+import { parseJsonBody, getClientIp, formatZodErrors } from '@/lib/auth/http';
+import { checkRateLimit, rateLimitResponse } from '@/lib/auth/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  await ensureAppInitialized();
-
   try {
-    const body = await request.json();
-    const parsed = loginSchema.safeParse(body);
+    await ensureAppInitialized();
+
+    const ip = getClientIp(request);
+    const rate = checkRateLimit('login', ip);
+    if (!rate.allowed) {
+      const { message, status } = rateLimitResponse(rate.retryAfterSec);
+      return errorResponse(message, status);
+    }
+
+    const body = await parseJsonBody(request);
+    if (!body.ok) return body.response;
+
+    const parsed = loginSchema.safeParse(body.data);
     if (!parsed.success) {
-      return errorResponse(parsed.error.issues[0]?.message || 'Invalid input');
+      return errorResponse(formatZodErrors(parsed.error));
     }
 
     const result = await loginUser(parsed.data, {
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null,
+      ipAddress: ip,
       userAgent: request.headers.get('user-agent'),
     });
 

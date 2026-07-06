@@ -23,6 +23,7 @@ import {
 } from './user-repository';
 import type { AuthSession, PublicUser } from './types';
 import type { ChangePasswordInput, ForgotPasswordInput, LoginInput, RegisterInput, ResetPasswordInput } from './validators';
+import { isUniqueConstraintError } from './errors';
 
 function toPublicUser(session: AuthSession): PublicUser {
   return {
@@ -112,22 +113,29 @@ export async function registerUser(
   }
 
   const passwordHash = await hashPassword(input.password);
-  const user = createUser({
-    username: input.username,
-    email: input.email,
-    passwordHash,
-    displayName: input.displayName,
-  });
+  try {
+    const user = createUser({
+      username: input.username,
+      email: input.email,
+      passwordHash,
+      displayName: input.displayName,
+    });
 
-  return {
-    ok: true,
-    user: {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      displayName: user.display_name,
-    },
-  };
+    return {
+      ok: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        displayName: user.display_name,
+      },
+    };
+  } catch (error) {
+    if (isUniqueConstraintError(error)) {
+      return { ok: false, error: 'Username or email is already registered', status: 409 };
+    }
+    throw error;
+  }
 }
 
 export async function requestPasswordReset(
