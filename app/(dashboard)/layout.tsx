@@ -1,16 +1,9 @@
-import { redirect } from 'next/navigation';
-import { getAuthSession } from '@/lib/auth/session';
-import { sessionToPublicUser } from '@/lib/auth/service';
-import { ensureAppInitialized } from '@/lib/init';
+import { getAuthenticatedUser } from '@/lib/auth/server';
 import { DashboardShell } from '@/components/dashboard-shell';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  await ensureAppInitialized();
-
-  const session = await getAuthSession();
-  if (!session) redirect('/login');
-
-  const user = sessionToPublicUser(session);
-
+  const user = await getAuthenticatedUser();
   return <DashboardShell user={user}>{children}</DashboardShell>;
 }

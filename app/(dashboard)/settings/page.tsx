@@ -1,10 +1,9 @@
-import { getAuthSession } from '@/lib/auth/session';
-import { sessionToPublicUser } from '@/lib/auth/service';
-import { redirect } from 'next/navigation';
+import { getAuthenticatedUser } from '@/lib/auth/server';
 import { SettingsContent } from './settings-content';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SettingsPage() {
-  const session = await getAuthSession();
-  if (!session) redirect('/login');
-  return <SettingsContent user={sessionToPublicUser(session)} />;
+  const user = await getAuthenticatedUser();
+  return <SettingsContent user={user} />;
 }

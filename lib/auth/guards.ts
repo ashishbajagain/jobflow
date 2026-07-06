@@ -1,11 +1,13 @@
 import { NextRequest } from 'next/server';
 import { errorResponse } from '../api-utils';
+import { ensureAppInitialized } from '../init';
 import { getAuthSession } from './session';
 import type { AuthSession } from './types';
 
 export async function requireAuth(
   request: NextRequest
 ): Promise<{ session: AuthSession } | { response: ReturnType<typeof errorResponse> }> {
+  await ensureAppInitialized();
   const session = await getAuthSession(request);
   if (!session) {
     return { response: errorResponse('Unauthorized', 401) };

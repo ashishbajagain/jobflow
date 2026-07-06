@@ -8,12 +8,12 @@ import { ensureAppInitialized } from '@/lib/init';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  await ensureAppInitialized();
-
-  const auth = await requireAuth(request);
-  if ('response' in auth) return auth.response;
-
   try {
+    await ensureAppInitialized();
+
+    const auth = await requireAuth(request);
+    if ('response' in auth) return auth.response;
+
     const body = await request.json();
     const parsed = changePasswordSchema.safeParse(body);
     if (!parsed.success) {
