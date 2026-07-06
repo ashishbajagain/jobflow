@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /*
+     * JobFlow Brand Palette
+     * Foundation: Notion (warm stone neutrals)
+     * Primary: Mercury / modern fintech teal (trust, clarity, growth)
+     * Accent: Muted copper warmth (Airbnb-inspired, used sparingly)
+     */
+    --background: 40 20% 98%;
+    --foreground: 24 10% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 24 10% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 10% 10%;
+
+    /* Deep teal — distinctive, professional, not generic SaaS blue */
+    --primary: 175 55% 32%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 30 15% 95%;
+    --secondary-foreground: 24 10% 30%;
+    --muted: 30 10% 94%;
+    --muted-foreground: 24 6% 44%;
+    --accent: 175 30% 95%;
+    --accent-foreground: 175 55% 25%;
+
+    --destructive: 0 65% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 30 12% 89%;
+    --input: 30 12% 89%;
+    --ring: 175 55% 32%;
+    --radius: 0.75rem;
+
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 24 10% 10%;
+    --sidebar-border: 30 10% 92%;
+    --sidebar-accent: 175 35% 96%;
+
+    /* Brand tokens */
+    --brand-primary: 175 55% 32%;
+    --brand-primary-light: 175 40% 94%;
+    --brand-copper: 25 75% 42%;
+    --brand-ink: 24 10% 10%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  h1 {
+    @apply text-2xl font-semibold tracking-tight text-foreground sm:text-3xl;
+  }
+  h2 {
+    @apply text-lg font-semibold tracking-tight text-foreground;
+  }
+}
+
+@layer components {
+  .page-container {
+    @apply mx-auto w-full max-w-6xl space-y-8 px-1 sm:px-2;
+  }
+  .page-header {
+    @apply flex flex-col gap-1.5 sm:flex-row sm:items-end sm:justify-between;
+  }
+  .page-subtitle {
+    @apply text-sm text-muted-foreground sm:text-base;
+  }
+  .surface-card {
+    @apply rounded-2xl border border-border/80 bg-card shadow-sm;
+  }
+  .link-brand {
+    @apply font-semibold text-primary transition-colors hover:text-[hsl(175,55%,26%)];
+  }
+  .btn-brand {
+    @apply rounded-xl bg-primary text-primary-foreground hover:bg-primary/90;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+}
+
+.recharts-tooltip-cursor {
+  fill: transparent !important;
+}
+
+.recharts-active-bar {
+  opacity: 1 !important;
+}
