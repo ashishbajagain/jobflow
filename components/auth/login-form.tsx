@@ -2,43 +2,54 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/components/ui/use-toast';
+import { apiFetch } from '@/lib/api-client';
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const sessionExpired = searchParams.get('session') === 'expired';
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
         body: JSON.stringify({ username, password }),
       });
-      const result = await response.json();
 
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        toast({
+          title: 'Sign in failed',
+          description: 'Unexpected server response. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const result = await response.json();
       if (!result.success) {
         toast({ title: 'Sign in failed', description: result.error, variant: 'destructive' });
         return;
       }
 
       const next = searchParams.get('next') || '/';
-      router.push(next);
-      router.refresh();
+      // Full navigation ensures the session cookie is sent on the first dashboard load.
+      window.location.assign(next);
     } catch {
       toast({ title: 'Sign in failed', description: 'Something went wrong. Try again.', variant: 'destructive' });
     } finally {
@@ -53,6 +64,11 @@ export function LoginForm() {
         <CardDescription>Sign in to your JobFlow account</CardDescription>
       </CardHeader>
       <CardContent>
+        {sessionExpired && (
+          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            Your session expired. Please sign in again.
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="username">Username</Label>

@@ -18,6 +18,7 @@ import { StatusCharts } from '@/components/status-charts';
 import { RecentApplications, FollowUpList } from '@/components/application-card';
 import { DashboardSkeleton } from '@/components/skeleton';
 import { toast } from '@/components/ui/use-toast';
+import { apiFetch } from '@/lib/api-client';
 import { STATUS_CONFIG, type ApplicationStatus } from '@/lib/constants';
 import type { ApplicationStats } from '@/lib/types';
 
@@ -58,22 +59,49 @@ function StatCard({
 export default function DashboardPage() {
   const [stats, setStats] = useState<ApplicationStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/stats')
-      .then((r) => r.json())
-      .then((result) => {
-        if (!result.success) throw new Error(result.error);
+    apiFetch('/api/stats')
+      .then(async (r) => {
+        const result = await r.json();
+        if (!result.success) {
+          if (r.status === 401) {
+            window.location.assign('/login?session=expired');
+            return;
+          }
+          throw new Error(result.error || 'Failed to load dashboard');
+        }
         setStats(result.data);
+        setError(null);
       })
-      .catch((err) =>
-        toast({ variant: 'destructive', title: 'Error', description: err.message })
-      )
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : 'Failed to load dashboard';
+        setError(message);
+        toast({ variant: 'destructive', title: 'Error', description: message });
+      })
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="page-container"><DashboardSkeleton /></div>;
-  if (!stats) return null;
+
+  if (error || !stats) {
+    return (
+      <div className="page-container">
+        <Card className="surface-card">
+          <CardContent className="py-16 text-center">
+            <p className="text-lg font-medium text-foreground">Unable to load dashboard</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {error || 'Something went wrong while loading your data.'}
+            </p>
+            <Button className="btn-brand mt-6" onClick={() => window.location.reload()}>
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const pipelineStatuses = ['Applied', 'In Review', 'Interview', 'Assessment', 'Offer'] as ApplicationStatus[];
 

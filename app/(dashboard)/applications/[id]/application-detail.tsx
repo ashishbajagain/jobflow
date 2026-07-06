@@ -24,6 +24,7 @@ import { ApplicationForm } from '@/components/application-form';
 import { ApplicationLink } from '@/components/application-card';
 import { DeleteApplicationButton } from '@/components/delete-application-button';
 import { PageLoading } from '@/components/skeleton';
+import { apiFetch } from '@/lib/api-client';
 import { toast } from '@/components/ui/use-toast';
 import { formatDate, formatDateTime, formatSalary } from '@/lib/utils';
 import { STATUS_CONFIG } from '@/lib/constants';
@@ -64,7 +65,7 @@ export default function ApplicationDetailPage({ params }: { params: { id: string
 
   const fetchApplication = async () => {
     try {
-      const response = await fetch(`/api/applications/${params.id}`);
+      const response = await apiFetch(`/api/applications/${params.id}`);
       const result = await response.json();
       if (!result.success) throw new Error(result.error);
       setApplication(result.data);

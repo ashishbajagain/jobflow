@@ -219,6 +219,39 @@ async function run() {
     }
   });
 
+  await test('Login creates resolvable session', async () => {
+    const { registerUser, loginUser } = await import('../lib/auth/service');
+    const { resolveAuthSession } = await import('../lib/auth/session');
+    const suffix = Date.now();
+    const username = `loginuser${suffix}`;
+
+    const registered = await registerUser({
+      username,
+      email: `${username}@example.com`,
+      password: 'ValidPass1',
+    });
+    assert(registered.ok === true, 'User registered for login test');
+
+    const login = await loginUser({ username, password: 'ValidPass1' }, {});
+    assert(login.ok === true, 'Login succeeds for registered user');
+    if (login.ok) {
+      const session = await resolveAuthSession(login.token);
+      assert(session !== null, 'Session resolves from login token');
+      assert(session!.username === username, 'Resolved session matches user');
+    }
+  });
+
+  await test('Stale token returns null when user missing', async () => {
+    const { signSessionToken } = await import('../lib/auth/jwt');
+    const { resolveAuthSession } = await import('../lib/auth/session');
+    const token = await signSessionToken(
+      { sessionId: 'missing-session', userId: 99999 },
+      new Date(Date.now() + 60_000).toISOString()
+    );
+    const session = await resolveAuthSession(token);
+    assert(session === null, 'Missing user invalidates session');
+  });
+
   console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
   if (failed > 0) process.exit(1);
 }

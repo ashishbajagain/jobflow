@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FollowUpList } from '@/components/application-card';
 import { PageLoading } from '@/components/skeleton';
+import { apiFetch } from '@/lib/api-client';
 import { toast } from '@/components/ui/use-toast';
 import type { Application } from '@/lib/types';
 
@@ -17,8 +18,8 @@ export default function FollowUpsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/applications?needs_follow_up=true').then((r) => r.json()),
-      fetch('/api/applications?status=Applied&sortBy=date_applied&sortOrder=asc').then((r) => r.json()),
+      apiFetch('/api/applications?needs_follow_up=true').then((r) => r.json()),
+      apiFetch('/api/applications?status=Applied&sortBy=date_applied&sortOrder=asc').then((r) => r.json()),
     ])
       .then(([followUpResult, appliedResult]) => {
         if (!followUpResult.success) throw new Error(followUpResult.error);

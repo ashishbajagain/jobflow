@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api-client';
 import { toast } from '@/components/ui/use-toast';
 import { StatusBadge } from '@/components/status-badge';
 import { PageLoading } from '@/components/skeleton';
@@ -16,7 +17,7 @@ export default function PipelinePage() {
 
   const fetchApps = useCallback(async () => {
     try {
-      const res = await fetch('/api/applications?sortBy=updated_at&sortOrder=desc');
+      const res = await apiFetch('/api/applications?sortBy=updated_at&sortOrder=desc');
       const result = await res.json();
       if (!result.success) throw new Error(result.error);
       setApplications(result.data);
@@ -38,7 +39,7 @@ export default function PipelinePage() {
     );
 
     try {
-      const res = await fetch(`/api/applications/${appId}`, {
+      const res = await apiFetch(`/api/applications/${appId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus, note: `Moved to ${newStatus} via pipeline` }),

@@ -21,6 +21,7 @@ import {
   QuickStatusSelect,
 } from '@/components/delete-application-button';
 import { TableSkeleton } from '@/components/skeleton';
+import { apiFetch } from '@/lib/api-client';
 import { toast } from '@/components/ui/use-toast';
 import { formatDate } from '@/lib/utils';
 import { PAGE_SIZE, APPLICATION_STATUSES, ROLE_TYPES, JOB_SOURCES } from '@/lib/constants';
@@ -79,7 +80,7 @@ function ApplicationsContent() {
         ...(sourceFilter !== 'all' && { source: sourceFilter }),
         ...(debouncedSearch && { search: debouncedSearch }),
       });
-      const response = await fetch(`/api/applications?${params}`);
+      const response = await apiFetch(`/api/applications?${params}`);
       const result = await response.json();
       if (!result.success) throw new Error(result.error);
 
