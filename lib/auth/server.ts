@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { ensureAppInitialized } from '@/lib/init';
-import { clearSessionCookieFromStore, getAuthSession, getSessionTokenFromCookies } from './session';
+import { getAuthSession, getSessionTokenFromCookies } from './session';
 import { sessionToPublicUser } from './service';
 import type { AuthSession, PublicUser } from './types';
 
@@ -10,7 +10,6 @@ export async function getAuthenticatedSession(): Promise<AuthSession> {
   const session = await getAuthSession();
   if (!session) {
     if (token) {
-      await clearSessionCookieFromStore();
       redirect('/login?session=expired');
     }
     redirect('/login');

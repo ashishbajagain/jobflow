@@ -16,11 +16,6 @@ export async function getSessionTokenFromCookies(): Promise<string | null> {
   return cookieStore.get(AUTH_CONFIG.sessionCookie)?.value ?? null;
 }
 
-export async function clearSessionCookieFromStore(): Promise<void> {
-  const cookieStore = await cookies();
-  cookieStore.delete(AUTH_CONFIG.sessionCookie);
-}
-
 export async function resolveAuthSession(token: string | null): Promise<AuthSession | null> {
   if (!token) return null;
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySessionToken } from '@/lib/auth/jwt';
 import { AUTH_CONFIG } from '@/lib/auth/config';
+import { clearSessionCookie } from '@/lib/auth/session';
 
 const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password'];
 const PUBLIC_API_PREFIXES = ['/api/auth/'];
@@ -27,11 +28,25 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get(AUTH_CONFIG.sessionCookie)?.value ?? null;
   const session = token ? await verifySessionToken(token) : null;
   const isPublic = isPublicPath(pathname);
+  const hasStaleCookie = Boolean(token && !session);
 
   if (!session && !isPublic) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('next', pathname);
-    return NextResponse.redirect(loginUrl);
+    if (hasStaleCookie) {
+      loginUrl.searchParams.set('session', 'expired');
+    }
+    const response = NextResponse.redirect(loginUrl);
+    if (hasStaleCookie) {
+      clearSessionCookie(response);
+    }
+    return response;
+  }
+
+  if (hasStaleCookie && isPublic) {
+    const response = NextResponse.next();
+    clearSessionCookie(response);
+    return response;
   }
 
   return NextResponse.next();
