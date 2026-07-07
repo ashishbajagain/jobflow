@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { successResponse, errorResponse } from '@/lib/api-utils';
 import { loginUser } from '@/lib/auth/service';
 import { loginSchema } from '@/lib/auth/validators';
-import { setSessionCookie } from '@/lib/auth/session';
+import { setSessionCookie } from '@/lib/auth/cookies';
 import { ensureAppInitialized } from '@/lib/init';
 import { parseJsonBody, getClientIp, formatZodErrors } from '@/lib/auth/http';
 import { checkRateLimit, rateLimitResponse } from '@/lib/auth/rate-limit';

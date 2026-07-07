@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifySessionToken } from '@/lib/auth/jwt';
 import { AUTH_CONFIG } from '@/lib/auth/config';
-import { clearSessionCookie } from '@/lib/auth/session';
+import { clearSessionCookie } from '@/lib/auth/cookies';
 
 const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password'];
 const PUBLIC_API_PREFIXES = ['/api/auth/'];

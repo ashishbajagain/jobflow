@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { successResponse } from '@/lib/api-utils';
 import { logoutUser } from '@/lib/auth/service';
-import { clearSessionCookie, getSessionTokenFromRequest } from '@/lib/auth/session';
+import { clearSessionCookie, getSessionTokenFromRequest } from '@/lib/auth/cookies';
 
 export const dynamic = 'force-dynamic';
 
