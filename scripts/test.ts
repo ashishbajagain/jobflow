@@ -15,7 +15,9 @@ import {
   deleteApplication,
   getApplicationStats,
 } from '../lib/db';
-import { initializeAuthAndSeed } from '../lib/auth/seed';
+import { DEFAULT_USER } from '../lib/auth/config';
+import { createSeedUser, ensureUserApplicationsSeeded } from '../lib/auth/seed';
+import { hashPassword } from '../lib/auth/password';
 import { getUserByUsername } from '../lib/auth/user-repository';
 
 let passed = 0;
@@ -44,9 +46,19 @@ async function test(name: string, fn: () => void | Promise<void>) {
 
 async function setup() {
   process.env.AUTH_SECRET = process.env.AUTH_SECRET || 'test-secret-key-for-integration-tests';
-  await initializeAuthAndSeed();
-  const user = getUserByUsername('ashish');
-  if (!user) throw new Error('Default user not found');
+  let user = getUserByUsername(DEFAULT_USER.username);
+  if (!user) {
+    const passwordHash = await hashPassword('integration-test-password');
+    const id = await createSeedUser({
+      username: DEFAULT_USER.username,
+      email: DEFAULT_USER.email,
+      displayName: DEFAULT_USER.displayName,
+      passwordHash,
+    });
+    user = getUserByUsername(DEFAULT_USER.username);
+    if (!user) throw new Error(`Test user not found after create (id ${id})`);
+  }
+  await ensureUserApplicationsSeeded(user.id);
   userId = user.id;
   resetDatabase(userId);
   seedDatabase(true, userId);

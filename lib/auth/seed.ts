@@ -1,34 +1,18 @@
 import { getDb } from '../db';
 import { DEFAULT_USER } from './config';
-import { hashPassword } from './password';
-import { createUser, getUserByUsername, updateUserEmail } from './user-repository';
+import { createUser, emailExists, getUserByUsername, updateUserEmail } from './user-repository';
 import { seedDatabase } from '../db';
 
-const DEFAULT_PASSWORD = process.env.DEFAULT_USER_PASSWORD || 'JobFlow@Ashish2026';
-
-export async function seedDefaultUser(): Promise<number> {
+export async function seedDefaultUser(): Promise<number | null> {
   const existing = getUserByUsername(DEFAULT_USER.username);
   if (existing) {
-    if (existing.email !== DEFAULT_USER.email) {
+    if (existing.email !== DEFAULT_USER.email && !emailExists(DEFAULT_USER.email)) {
       updateUserEmail(existing.id, DEFAULT_USER.email);
     }
     return existing.id;
   }
 
-  const passwordHash = await hashPassword(DEFAULT_PASSWORD);
-  try {
-    const user = createUser({
-      username: DEFAULT_USER.username,
-      email: DEFAULT_USER.email,
-      passwordHash,
-      displayName: DEFAULT_USER.displayName,
-    });
-    return user.id;
-  } catch (error) {
-    const retry = getUserByUsername(DEFAULT_USER.username);
-    if (retry) return retry.id;
-    throw error;
-  }
+  return null;
 }
 
 export function assignOrphanApplicationsToUser(userId: number): void {
@@ -36,9 +20,11 @@ export function assignOrphanApplicationsToUser(userId: number): void {
   db.prepare('UPDATE applications SET user_id = ? WHERE user_id IS NULL').run(userId);
 }
 
-export async function ensureDefaultUser(): Promise<number> {
+export async function ensureDefaultUser(): Promise<number | null> {
   const userId = await seedDefaultUser();
-  assignOrphanApplicationsToUser(userId);
+  if (userId !== null) {
+    assignOrphanApplicationsToUser(userId);
+  }
   return userId;
 }
 
@@ -58,5 +44,28 @@ export function ensureUserApplicationsSeeded(userId: number): void {
 /** @deprecated Use ensureDefaultUser + ensureUserApplicationsSeeded */
 export async function initializeAuthAndSeed(): Promise<void> {
   const userId = await ensureDefaultUser();
-  ensureUserApplicationsSeeded(userId);
+  if (userId !== null) {
+    ensureUserApplicationsSeeded(userId);
+  }
+}
+
+export async function createSeedUser(input: {
+  username: string;
+  email: string;
+  displayName: string;
+  passwordHash: string;
+}): Promise<number> {
+  try {
+    const user = createUser({
+      username: input.username,
+      email: input.email,
+      passwordHash: input.passwordHash,
+      displayName: input.displayName,
+    });
+    return user.id;
+  } catch (error) {
+    const retry = getUserByUsername(input.username);
+    if (retry) return retry.id;
+    throw error;
+  }
 }
