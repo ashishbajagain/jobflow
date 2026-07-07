@@ -95,6 +95,15 @@ export function updateUserPassword(userId: number, passwordHash: string): void {
   );
 }
 
+export function updateUserEmail(userId: number, email: string): void {
+  const db = getDb();
+  db.prepare('UPDATE users SET email = ?, updated_at = ? WHERE id = ?').run(
+    email.trim().toLowerCase(),
+    new Date().toISOString(),
+    userId
+  );
+}
+
 export function recordFailedLogin(userId: number, failedAttempts: number, lockedUntil: string | null): void {
   const db = getDb();
   db.prepare(

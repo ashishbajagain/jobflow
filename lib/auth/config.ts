@@ -12,6 +12,6 @@ export const AUTH_CONFIG = {
 
 export const DEFAULT_USER = {
   username: 'ashish',
-  email: 'ashish.bajagain@gmail.com',
+  email: 'bajagainashish@gmail.com',
   displayName: 'Ashish',
 } as const;

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { apiFetch } from '@/lib/api-client';
 import { toast } from '@/components/ui/use-toast';
 
 export function ForgotPasswordForm() {
@@ -19,11 +20,22 @@ export function ForgotPasswordForm() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/auth/forgot-password', {
+      const response = await apiFetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
+
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        toast({
+          title: 'Request failed',
+          description: 'Unexpected server response. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const result = await response.json();
 
       if (!result.success) {

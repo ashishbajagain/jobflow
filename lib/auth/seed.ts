@@ -1,7 +1,7 @@
 import { getDb } from '../db';
 import { DEFAULT_USER } from './config';
 import { hashPassword } from './password';
-import { createUser, getUserByUsername } from './user-repository';
+import { createUser, getUserByUsername, updateUserEmail } from './user-repository';
 import { seedDatabase } from '../db';
 
 const DEFAULT_PASSWORD = process.env.DEFAULT_USER_PASSWORD || 'JobFlow@Ashish2026';
@@ -9,6 +9,9 @@ const DEFAULT_PASSWORD = process.env.DEFAULT_USER_PASSWORD || 'JobFlow@Ashish202
 export async function seedDefaultUser(): Promise<number> {
   const existing = getUserByUsername(DEFAULT_USER.username);
   if (existing) {
+    if (existing.email !== DEFAULT_USER.email) {
+      updateUserEmail(existing.id, DEFAULT_USER.email);
+    }
     return existing.id;
   }
 
