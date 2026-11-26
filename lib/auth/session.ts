@@ -29,11 +29,13 @@ export async function resolveAuthSession(token: string | null): Promise<AuthSess
   if (!user) return null;
 
   const session = getSessionById(payload.sessionId);
-  if (session && session.user_id === payload.userId) {
-    touchSession(session.id);
+  if (!session || session.user_id !== payload.userId) {
+    // Require a live DB session so logout / password-reset revocation is honored.
+    return null;
   }
 
-  // Trust signed JWT when DB session is missing (e.g. ephemeral SQLite on serverless).
+  touchSession(session.id);
+
   return {
     userId: user.id,
     sessionId: payload.sessionId,

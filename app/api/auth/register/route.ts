@@ -4,7 +4,7 @@ import { registerUser } from '@/lib/auth/service';
 import { registerSchema } from '@/lib/auth/validators';
 import { validatePasswordStrength } from '@/lib/auth/password';
 import { ensureAppInitialized } from '@/lib/init';
-import { parseJsonBody, getClientIp, formatZodErrors } from '@/lib/auth/http';
+import { parseJsonBody, getClientIp, formatZodErrors, getAppUrl } from '@/lib/auth/http';
 import { checkRateLimit, rateLimitResponse } from '@/lib/auth/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -33,12 +33,12 @@ export async function POST(request: NextRequest) {
       return errorResponse(passwordError);
     }
 
-    const result = await registerUser(parsed.data);
+    const result = await registerUser(parsed.data, getAppUrl(request));
     if (!result.ok) {
       return errorResponse(result.error, result.status);
     }
 
-    return successResponse({ user: result.user }, 201);
+    return successResponse({ user: result.user, message: result.message }, 201);
   } catch (error) {
     console.error('POST /api/auth/register:', error);
     return errorResponse('Unable to create account right now', 500);

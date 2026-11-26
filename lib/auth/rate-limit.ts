@@ -13,6 +13,8 @@ const LIMITS = {
   forgotPassword: { max: 5, windowMs: 60 * 60 * 1000 },
   resetPassword: { max: 10, windowMs: 15 * 60 * 1000 },
   changePassword: { max: 5, windowMs: 15 * 60 * 1000 },
+  confirmEmail: { max: 20, windowMs: 15 * 60 * 1000 },
+  resendConfirmation: { max: 5, windowMs: 60 * 60 * 1000 },
 } as const;
 
 export type RateLimitAction = keyof typeof LIMITS;

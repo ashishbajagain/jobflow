@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +26,7 @@ export function RegisterForm() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
 
   function updateField(key: keyof typeof form, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -90,9 +91,11 @@ export function RegisterForm() {
         return;
       }
 
-      toast({ title: 'Account created', description: 'You can now sign in with your new account.' });
-      router.push('/login');
-      router.refresh();
+      setPendingEmail(form.email);
+      toast({
+        title: 'Check your email',
+        description: result.data?.message || 'We sent you a confirmation link.',
+      });
     } catch {
       toast({
         title: 'Registration failed',
@@ -102,6 +105,31 @@ export function RegisterForm() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (pendingEmail) {
+    return (
+      <Card className="surface-card border-0 shadow-lg">
+        <CardHeader className="space-y-3 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+            <Mail className="h-6 w-6 text-primary" />
+          </div>
+          <CardTitle className="text-xl">Confirm your email</CardTitle>
+          <CardDescription>
+            We sent a confirmation link to <strong>{pendingEmail}</strong>. Open it to activate your
+            account, then sign in.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button className="btn-brand w-full" onClick={() => router.push('/login')}>
+            Go to sign in
+          </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            Didn&apos;t get it? Check spam, or use “Resend confirmation” on the sign-in page.
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

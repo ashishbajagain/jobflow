@@ -17,8 +17,12 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [showResend, setShowResend] = useState(false);
+  const [resending, setResending] = useState(false);
 
   const sessionExpired = searchParams.get('session') === 'expired';
+  const confirmed = searchParams.get('confirmed') === '1';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,6 +47,7 @@ export function LoginForm() {
 
       const result = await response.json();
       if (!result.success) {
+        if (username.includes('@')) setResendEmail(username);
         toast({ title: 'Sign in failed', description: result.error, variant: 'destructive' });
         return;
       }
@@ -54,6 +59,36 @@ export function LoginForm() {
       toast({ title: 'Sign in failed', description: 'Something went wrong. Try again.', variant: 'destructive' });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResend(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resendEmail.trim()) {
+      toast({ title: 'Email required', description: 'Enter the email you registered with.', variant: 'destructive' });
+      return;
+    }
+
+    setResending(true);
+    try {
+      const response = await apiFetch('/api/auth/resend-confirmation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resendEmail }),
+      });
+      const result = await response.json();
+      if (!result.success) {
+        toast({ title: 'Could not resend', description: result.error, variant: 'destructive' });
+        return;
+      }
+      toast({
+        title: 'Check your email',
+        description: result.data?.message || 'If an unverified account exists, a new link was sent.',
+      });
+    } catch {
+      toast({ title: 'Could not resend', description: 'Something went wrong.', variant: 'destructive' });
+    } finally {
+      setResending(false);
     }
   }
 
@@ -69,13 +104,18 @@ export function LoginForm() {
             Your session expired. Please sign in again.
           </p>
         )}
+        {confirmed && (
+          <p className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+            Email confirmed. You can sign in now.
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="username">Username or email</Label>
             <Input
               id="username"
               autoComplete="username"
-              placeholder="Enter your username"
+              placeholder="username or you@example.com"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -111,6 +151,36 @@ export function LoginForm() {
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sign in'}
           </Button>
         </form>
+
+        {showResend && (
+          <form onSubmit={handleResend} className="mt-6 space-y-3 rounded-lg border border-border/60 p-4">
+            <p className="text-sm text-muted-foreground">
+              Need a new confirmation email? Enter your address below.
+            </p>
+            <Input
+              type="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={resendEmail}
+              onChange={(e) => setResendEmail(e.target.value)}
+              required
+            />
+            <Button type="submit" variant="outline" className="w-full" disabled={resending}>
+              {resending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Resend confirmation'}
+            </Button>
+          </form>
+        )}
+
+        {!showResend && (
+          <button
+            type="button"
+            className="mt-4 w-full text-center text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setShowResend(true)}
+          >
+            Resend confirmation email
+          </button>
+        )}
+
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{' '}
           <Link href="/register" className="link-brand font-medium">

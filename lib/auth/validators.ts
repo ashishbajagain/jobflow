@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { AUTH_CONFIG } from './config';
-import { sanitizeDisplayName, sanitizeEmail, sanitizeUsername, containsHtml } from './sanitize';
+import {
+  sanitizeDisplayName,
+  sanitizeEmail,
+  sanitizeUsername,
+  containsHtml,
+  stripControlCharacters,
+} from './sanitize';
 
 const RESERVED_USERNAMES = new Set([
   'admin',
@@ -56,13 +62,25 @@ const displayNameField = z.preprocess(
 );
 
 export const loginSchema = z.object({
+  // Accepts username or email
   username: z
     .string()
     .trim()
-    .min(1, 'Username is required')
-    .max(64)
-    .transform(sanitizeUsername),
+    .min(1, 'Username or email is required')
+    .max(254)
+    .transform((value) => {
+      const cleaned = stripControlCharacters(value).trim().toLowerCase();
+      return cleaned;
+    }),
   password: z.string().min(1, 'Password is required').max(AUTH_CONFIG.maxPasswordLength),
+});
+
+export const confirmEmailSchema = z.object({
+  token: z.string().min(1, 'Confirmation token is required').max(256),
+});
+
+export const resendConfirmationSchema = z.object({
+  email: emailField,
 });
 
 export const registerSchema = z.object({
@@ -91,6 +109,8 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type ConfirmEmailInput = z.infer<typeof confirmEmailSchema>;
+export type ResendConfirmationInput = z.infer<typeof resendConfirmationSchema>;
 
 export const registerFormSchema = registerSchema
   .extend({

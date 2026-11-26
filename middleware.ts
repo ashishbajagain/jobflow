@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifySessionToken } from '@/lib/auth/jwt';
 import { AUTH_CONFIG } from '@/lib/auth/config';
-import { clearSessionCookie } from '@/lib/auth/cookies';
 
-const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password'];
+const PUBLIC_PATHS = [
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/confirm-email',
+];
 const PUBLIC_API_PREFIXES = ['/api/auth/'];
 
 function isPublicPath(pathname: string): boolean {
@@ -14,6 +18,12 @@ function isPublicPath(pathname: string): boolean {
   return PUBLIC_API_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
+/**
+ * Edge middleware only gates on cookie presence.
+ * Full JWT verification happens in Node (API routes / server components),
+ * where AUTH_SECRET is reliably available. Verifying here caused valid
+ * sessions to be treated as expired when Edge lacked the secret.
+ */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -26,27 +36,12 @@ export async function middleware(request: NextRequest) {
   }
 
   const token = request.cookies.get(AUTH_CONFIG.sessionCookie)?.value ?? null;
-  const session = token ? await verifySessionToken(token) : null;
   const isPublic = isPublicPath(pathname);
-  const hasStaleCookie = Boolean(token && !session);
 
-  if (!session && !isPublic) {
+  if (!token && !isPublic) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('next', pathname);
-    if (hasStaleCookie) {
-      loginUrl.searchParams.set('session', 'expired');
-    }
-    const response = NextResponse.redirect(loginUrl);
-    if (hasStaleCookie) {
-      clearSessionCookie(response);
-    }
-    return response;
-  }
-
-  if (hasStaleCookie && isPublic) {
-    const response = NextResponse.next();
-    clearSessionCookie(response);
-    return response;
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();

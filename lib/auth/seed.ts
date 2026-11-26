@@ -61,6 +61,7 @@ export async function createSeedUser(input: {
       email: input.email,
       passwordHash: input.passwordHash,
       displayName: input.displayName,
+      emailVerifiedAt: new Date().toISOString(),
     });
     return user.id;
   } catch (error) {

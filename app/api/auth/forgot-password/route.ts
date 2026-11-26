@@ -3,17 +3,10 @@ import { successResponse, errorResponse } from '@/lib/api-utils';
 import { requestPasswordReset } from '@/lib/auth/service';
 import { forgotPasswordSchema } from '@/lib/auth/validators';
 import { ensureAppInitialized } from '@/lib/init';
-import { parseJsonBody, getClientIp, formatZodErrors } from '@/lib/auth/http';
+import { parseJsonBody, getClientIp, formatZodErrors, getAppUrl } from '@/lib/auth/http';
 import { checkRateLimit, rateLimitResponse } from '@/lib/auth/rate-limit';
 
 export const dynamic = 'force-dynamic';
-
-function getAppUrl(request: NextRequest): string {
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
-  const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
-  const proto = request.headers.get('x-forwarded-proto') || 'http';
-  return `${proto}://${host}`;
-}
 
 export async function POST(request: NextRequest) {
   try {

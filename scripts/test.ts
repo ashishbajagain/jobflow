@@ -219,37 +219,81 @@ async function run() {
   await test('Registration creates new user', async () => {
     const { registerUser } = await import('../lib/auth/service');
     const suffix = Date.now();
-    const result = await registerUser({
-      username: `user${suffix}`,
-      email: `user${suffix}@example.com`,
-      password: 'ValidPass1',
-      displayName: 'Test User',
-    });
+    const result = await registerUser(
+      {
+        username: `user${suffix}`,
+        email: `user${suffix}@example.com`,
+        password: 'ValidPass1',
+        displayName: 'Test User',
+      },
+      'http://localhost:3000'
+    );
     assert(result.ok === true, 'Registration succeeds for valid user');
     if (result.ok) {
       assert(result.user.username === `user${suffix}`, 'Username stored correctly');
+      assert(
+        result.message.toLowerCase().includes('email'),
+        'Registration asks user to confirm email'
+      );
     }
   });
 
   await test('Login creates resolvable session', async () => {
-    const { registerUser, loginUser } = await import('../lib/auth/service');
+    const { registerUser, loginUser, confirmUserEmail } = await import('../lib/auth/service');
     const { resolveAuthSession } = await import('../lib/auth/session');
+    const { getDb } = await import('../lib/db');
     const suffix = Date.now();
     const username = `loginuser${suffix}`;
 
-    const registered = await registerUser({
-      username,
-      email: `${username}@example.com`,
-      password: 'ValidPass1',
-    });
+    const registered = await registerUser(
+      {
+        username,
+        email: `${username}@example.com`,
+        password: 'ValidPass1',
+        displayName: undefined,
+      },
+      'http://localhost:3000'
+    );
     assert(registered.ok === true, 'User registered for login test');
 
+    const blocked = await loginUser({ username, password: 'ValidPass1' }, {});
+    assert(blocked.ok === false, 'Login blocked before email confirmation');
+    assert(
+      blocked.ok === false && blocked.error === 'Invalid username or password',
+      'Unverified login uses generic error (no credential oracle)'
+    );
+
+    const tokenRow = getDb()
+      .prepare(
+        `SELECT token_hash FROM email_verification_tokens
+         WHERE user_id = (SELECT id FROM users WHERE username = ?) AND used_at IS NULL
+         ORDER BY id DESC LIMIT 1`
+      )
+      .get(username) as { token_hash: string } | undefined;
+    assert(Boolean(tokenRow), 'Verification token created');
+
+    // Recreate plaintext token path via confirm API helper is hash-only; mark verified directly for session test
+    // after exercising blocked login, confirm using repository consume by regenerating:
+    const { createEmailVerificationToken } = await import('../lib/auth/verification-repository');
+    const userId = (
+      getDb().prepare('SELECT id FROM users WHERE username = ?').get(username) as { id: number }
+    ).id;
+    const confirmToken = createEmailVerificationToken(userId);
+    const confirmed = await confirmUserEmail({ token: confirmToken });
+    assert(confirmed.ok === true, 'Email confirmation succeeds');
+
     const login = await loginUser({ username, password: 'ValidPass1' }, {});
-    assert(login.ok === true, 'Login succeeds for registered user');
+    assert(login.ok === true, 'Login succeeds after email confirmation');
     if (login.ok) {
       const session = await resolveAuthSession(login.token);
       assert(session !== null, 'Session resolves from login token');
       assert(session!.username === username, 'Resolved session matches user');
+
+      const emailLogin = await loginUser(
+        { username: `${username}@example.com`, password: 'ValidPass1' },
+        {}
+      );
+      assert(emailLogin.ok === true, 'Login succeeds with email identifier');
     }
   });
 

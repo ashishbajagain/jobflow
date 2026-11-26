@@ -3,6 +3,7 @@ export const AUTH_CONFIG = {
   sessionMaxAgeDays: 30,
   sessionMaxAgeSeconds: 30 * 24 * 60 * 60,
   resetTokenMaxAgeMinutes: 60,
+  emailVerificationMaxAgeHours: 24,
   maxLoginAttempts: 5,
   lockoutMinutes: 15,
   bcryptRounds: 12,

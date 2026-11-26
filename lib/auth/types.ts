@@ -3,6 +3,7 @@ export interface User {
   username: string;
   email: string;
   display_name: string | null;
+  email_verified_at: string | null;
   failed_login_attempts: number;
   locked_until: string | null;
   created_at: string;

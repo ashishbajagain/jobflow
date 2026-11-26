@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3';
+import Database from 'libsql';
 import path from 'path';
 import fs from 'fs';
 import { differenceInDays, parseISO } from 'date-fns';
@@ -21,18 +21,42 @@ import type {
   UpdateApplicationInput,
 } from './types';
 
-const DATA_DIR = process.env.VERCEL ? '/tmp' : path.join(process.cwd(), 'data');
+const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_PATH = path.join(DATA_DIR, 'applications.db');
 
-let db: Database.Database | null = null;
+let db: InstanceType<typeof Database> | null = null;
 
-function getDb(): Database.Database {
+function openDatabase(): InstanceType<typeof Database> {
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+  if (tursoUrl) {
+    // libsql runtime accepts authToken; shipped typings omit it.
+    return new Database(tursoUrl, {
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    } as ConstructorParameters<typeof Database>[1]);
+  }
+
+  // Ephemeral /tmp SQLite cannot serve multi-user auth on Vercel (instances don't share disk).
+  if (process.env.VERCEL) {
+    throw new Error(
+      'TURSO_DATABASE_URL is required on Vercel. Local SQLite in /tmp is not durable across serverless instances.'
+    );
+  }
+
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+  return new Database(DB_PATH);
+}
+
+function getDb(): InstanceType<typeof Database> {
   if (!db) {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    db = openDatabase();
+    try {
+      // WAL applies to local files; remote Turso may reject it.
+      db.pragma('journal_mode = WAL');
+    } catch {
+      // ignore for remote
     }
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     runMigrations(db);
   }
@@ -188,11 +212,20 @@ export function getApplicationById(id: number, userId?: number): ApplicationWith
 
   if (!row) return null;
 
-  const timeline = database
-    .prepare(
-      'SELECT * FROM status_changes WHERE application_id = ? ORDER BY changed_at DESC'
-    )
-    .all(id) as StatusChange[];
+  const timeline = (
+    database
+      .prepare(
+        'SELECT id, application_id, old_status, new_status, note, changed_at FROM status_changes WHERE application_id = ? ORDER BY changed_at DESC'
+      )
+      .all(id) as StatusChange[]
+  ).map((entry) => ({
+    id: entry.id,
+    application_id: entry.application_id,
+    old_status: entry.old_status,
+    new_status: entry.new_status,
+    note: entry.note,
+    changed_at: entry.changed_at,
+  }));
 
   return { ...rowToApplication(row), timeline };
 }

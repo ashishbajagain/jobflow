@@ -10,6 +10,18 @@ export function getClientIp(request: NextRequest): string {
   return request.headers.get('x-real-ip') || 'unknown';
 }
 
+export function getAppUrl(request: NextRequest): string {
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
+
+  // Never derive magic-link hosts from request headers in production (reset/confirm poisoning).
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('APP_URL environment variable is required in production');
+  }
+
+  const host = request.headers.get('host') || 'localhost:3000';
+  return `http://${host}`;
+}
+
 export async function parseJsonBody<T = unknown>(
   request: NextRequest
 ): Promise<{ ok: true; data: T } | { ok: false; response: ReturnType<typeof errorResponse> }> {

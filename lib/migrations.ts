@@ -1,6 +1,8 @@
-import type Database from 'better-sqlite3';
+import type Database from 'libsql';
 
-const MIGRATIONS: { version: number; up: (db: Database.Database) => void }[] = [
+type Db = InstanceType<typeof Database>;
+
+const MIGRATIONS: { version: number; up: (db: Db) => void }[] = [
   {
     version: 1,
     up(db) {
@@ -128,9 +130,38 @@ const MIGRATIONS: { version: number; up: (db: Database.Database) => void }[] = [
       }
     },
   },
+  {
+    version: 4,
+    up(db) {
+      const userColumns = db.prepare('PRAGMA table_info(users)').all() as { name: string }[];
+      if (!userColumns.some((c) => c.name === 'email_verified_at')) {
+        db.exec('ALTER TABLE users ADD COLUMN email_verified_at TEXT');
+        // Existing accounts were created before verification existed — treat as verified.
+        db.exec(`
+          UPDATE users
+          SET email_verified_at = COALESCE(created_at, datetime('now'))
+          WHERE email_verified_at IS NULL
+        `);
+      }
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS email_verification_tokens (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          token_hash TEXT NOT NULL UNIQUE,
+          expires_at TEXT NOT NULL,
+          used_at TEXT,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_email_verification_user ON email_verification_tokens(user_id);
+      `);
+    },
+  },
 ];
 
-export function runMigrations(db: Database.Database): void {
+export function runMigrations(db: Db): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       version INTEGER PRIMARY KEY,
