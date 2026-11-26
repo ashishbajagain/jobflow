@@ -35,17 +35,21 @@ function openDatabase(): InstanceType<typeof Database> {
     } as ConstructorParameters<typeof Database>[1]);
   }
 
-  // Ephemeral /tmp SQLite cannot serve multi-user auth on Vercel (instances don't share disk).
+  // On Vercel without Turso, fall back to /tmp so the app boots — but data is not shared
+  // across serverless instances. Set TURSO_DATABASE_URL + TURSO_AUTH_TOKEN for multi-user.
+  const dataDir = process.env.VERCEL ? '/tmp' : DATA_DIR;
+  const dbPath = path.join(dataDir, 'applications.db');
+
   if (process.env.VERCEL) {
-    throw new Error(
-      'TURSO_DATABASE_URL is required on Vercel. Local SQLite in /tmp is not durable across serverless instances.'
+    console.error(
+      '[db] TURSO_DATABASE_URL is not set. Using ephemeral /tmp SQLite — accounts and sessions will not persist reliably across instances. Create a Turso DB and set TURSO_DATABASE_URL + TURSO_AUTH_TOKEN.'
     );
   }
 
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
   }
-  return new Database(DB_PATH);
+  return new Database(dbPath);
 }
 
 function getDb(): InstanceType<typeof Database> {
